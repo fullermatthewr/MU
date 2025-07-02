@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Investment Analysis: Micron Technology (MU)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: "Warm Neutral Harmony" - A calming and professional palette using beige, slate, stone, and a subtle blue accent to create a focused, high-end analytical feel. -->
+    <!-- Application Structure Plan: A top-down, dashboard-style SPA. The structure prioritizes immediate insight, starting with the final verdict and key metrics, then allowing non-linear exploration via a sticky nav. The flow is: 1. Verdict & Dashboard (Quick Overview), 2. Thesis (The 'Why'), 3. Valuation (The Price), 4. Risks & Catalysts (The Future), 5. Context (The Big Picture). This structure is chosen over a linear report to better serve an investor's workflow, allowing them to jump directly to the information they need most, making the analysis a tool rather than a document. -->
+    <!-- Visualization & Content Choices: 
+        - Financials (Table 1) -> Goal: Show Change/Trends -> Viz: Interactive Line/Bar Chart (Chart.js) -> Interaction: Toggle datasets (revenue, margin, etc.). Justification: More dynamic and allows for focused trend analysis vs. a static table.
+        - Valuation (Table 2) -> Goal: Compare -> Viz: Interactive Bar Chart (Chart.js) -> Interaction: Buttons to switch metrics (P/E, EV/EBITDA). Justification: Faster visual comparison of peers.
+        - HBM Market (Table 3) -> Goal: Inform/Impact -> Viz: Doughnut Chart (Chart.js) -> Interaction: Hover tooltips. Justification: Dramatically visualizes the core growth driver of the thesis.
+        - Catalysts (Table 4) -> Goal: Organize/Timeline -> Viz: HTML/CSS Timeline -> Interaction: Hover highlights. Justification: More engaging and intuitive for time-based events.
+        - Arguments/Risks -> Goal: Organize/Inform -> Viz: HTML/CSS Cards & Accordions -> Interaction: Click to expand. Justification: Breaks down dense text into digestible, user-controlled chunks.
+        - New: Summarize Section -> Goal: Inform/Synthesize -> Viz: Dynamic Text Block (LLM-generated) -> Interaction: Button click. Justification: Provides quick, AI-powered summaries for dense sections.
+        - New: Market Impact Analysis -> Goal: Analyze/Predict -> Viz: Dynamic Text Block (LLM-generated) -> Interaction: Text input and button click. Justification: Allows users to explore hypothetical scenarios with AI assistance.
+        Library/Method: All charts use Chart.js (Canvas). All diagrams use structured HTML/CSS with Tailwind. LLM features use Gemini API via fetch.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #F5F5F4; /* stone-100 */
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 350px;
+            max-height: 40vh;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 400px;
+            }
+        }
+        .nav-link {
+            transition: color 0.3s, border-bottom-color 0.3s;
+        }
+        .nav-link.active {
+            color: #2563EB; /* blue-600 */
+            border-bottom-color: #2563EB; /* blue-600 */
+        }
+        .card-enter {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+        }
+        .card-enter-active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .llm-loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            vertical-align: middle;
+            margin-left: 8px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="text-slate-700">
+
+    <header class="bg-white/80 backdrop-blur-lg sticky top-0 z-50 shadow-sm">
+        <nav class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center">
+                    <span class="font-bold text-xl text-slate-800">Micron (MU)</span>
+                </div>
+                <div class="hidden md:block">
+                    <div class="ml-10 flex items-baseline space-x-4">
+                        <a href="#dashboard" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-slate-600 hover:text-blue-600 border-b-2 border-transparent">Dashboard</a>
+                        <a href="#thesis" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-slate-600 hover:text-blue-600 border-b-2 border-transparent">Investment Thesis</a>
+                        <a href="#valuation" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-slate-600 hover:text-blue-600 border-b-2 border-transparent">Valuation</a>
+                        <a href="#risks-catalysts" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-slate-600 hover:text-blue-600 border-b-2 border-transparent">Risks & Catalysts</a>
+                        <a href="#context" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-slate-600 hover:text-blue-600 border-b-2 border-transparent">Sector Context</a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+        <section id="verdict" class="text-center mb-12 animate-fade-in">
+            <h1 class="text-4xl md:text-5xl font-bold text-slate-800 mb-2">Navigating the AI Memory Boom</h1>
+            <p class="text-lg text-slate-600 max-w-3xl mx-auto">An interactive analysis of Micron Technology's investment opportunity.</p>
+            <div class="mt-6 bg-white p-6 rounded-xl shadow-lg inline-flex items-center space-x-6 border border-slate-200">
+                <div>
+                    <p class="text-sm text-slate-500">Recommendation</p>
+                    <p class="text-2xl font-bold text-green-600">BUY</p>
+                </div>
+                <div class="h-12 w-px bg-slate-200"></div>
+                <div>
+                    <p class="text-sm text-slate-500">Confidence</p>
+                    <p class="text-2xl font-bold text-blue-600">High</p>
+                </div>
+                <div class="h-12 w-px bg-slate-200"></div>
+                <div>
+                    <p class="text-sm text-slate-500">Timeframe</p>
+                    <p class="text-2xl font-bold text-slate-800">6-12 Months</p>
+                </div>
+            </div>
+        </section>
+
+        <div id="dashboard" class="space-y-8 scroll-mt-20">
+            <div class="bg-white p-6 rounded-xl shadow-md border border-slate-200">
+                <h2 class="text-2xl font-bold text-slate-800 mb-1">Financial Dashboard</h2>
+                <p class="text-slate-500 mb-6">This section provides a high-level overview of Micron's recent financial performance and the explosive growth of the HBM market, which is central to the investment thesis. Interact with the chart below by clicking the labels to show or hide data, allowing you to focus on the specific trends driving Micron's recovery.</p>
+                <div class="chart-container">
+                    <canvas id="financialsChart"></canvas>
+                </div>
+            </div>
+
+             <div class="grid md:grid-cols-2 gap-8">
+                <div class="bg-white p-6 rounded-xl shadow-md border border-slate-200">
+                    <h3 class="text-xl font-bold text-slate-800 mb-4">HBM: The Growth Engine</h3>
+                     <p class="text-slate-500 mb-4">The High Bandwidth Memory (HBM) market is projected for explosive growth, vastly outpacing the traditional memory market. This chart illustrates the forecasted surge, which underpins Micron's enhanced profitability and structural growth.</p>
+                    <div class="chart-container" style="max-height: 250px; height: 250px;">
+                        <canvas id="hbmMarketChart"></canvas>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-md border border-slate-200">
+                     <h3 class="text-xl font-bold text-slate-800 mb-4">Q3 FY2025 Highlights</h3>
+                     <p class="text-slate-500 mb-4">Micron's recent performance demonstrates a significant turnaround. Data center revenue, fueled by HBM, more than doubled year-over-year, driving record results and strong margin expansion.</p>
+                     <div class="space-y-4">
+                        <div class="flex justify-between items-baseline">
+                            <span class="font-medium">Revenue</span>
+                            <span class="font-bold text-2xl text-blue-600">$9.3B <span class="text-sm text-green-600 font-medium">(+37% YoY)</span></span>
+                        </div>
+                        <div class="w-full bg-slate-200 rounded-full h-2.5"><div class="bg-blue-600 h-2.5 rounded-full" style="width: 87%"></div></div>
+                        
+                        <div class="flex justify-between items-baseline">
+                            <span class="font-medium">Gross Margin</span>
+                            <span class="font-bold text-2xl text-blue-600">39.0%</span>
+                        </div>
+                        <div class="w-full bg-slate-200 rounded-full h-2.5"><div class="bg-blue-600 h-2.5 rounded-full" style="width: 39%"></div></div>
+
+                        <div class="flex justify-between items-baseline">
+                            <span class="font-medium">Operating Cash Flow</span>
+                            <span class="font-bold text-2xl text-blue-600">$4.6B</span>
+                        </div>
+                         <div class="w-full bg-slate-200 rounded-full h-2.5"><div class="bg-blue-600 h-2.5 rounded-full" style="width: 50%"></div></div>
+                     </div>
+                </div>
+            </div>
+        </div>
+        
+        <section id="thesis" class="pt-20 scroll-mt-20">
+            <h2 class="text-3xl font-bold text-slate-800 text-center mb-4">Core Investment Thesis</h2>
+            <p class="text-slate-500 text-center max-w-3xl mx-auto mb-6">The investment case for Micron rests on three pillars: its pivotal role in the structural growth of HBM, strong competitive execution in capturing this demand, and strategic long-term investments that enhance its resilience. This section breaks down each argument, showing how Micron is positioned for a multi-year upcycle.</p>
+            <button id="summarizeThesisBtn" class="summarize-btn block mx-auto mb-10 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors">✨ Summarize Thesis</button>
+            <div id="thesisSummary" class="llm-summary-output bg-blue-50 p-4 rounded-md border border-blue-200 hidden mb-6"></div>
+
+            <div class="grid md:grid-cols-3 gap-8">
+                <div class="bg-white p-6 rounded-xl shadow-md border border-slate-200 transition-transform transform hover:-translate-y-1">
+                    <div class="text-3xl mb-3">🚀</div>
+                    <h3 class="font-bold text-xl mb-2 text-slate-800">HBM Structural Growth Driver</h3>
+                    <p class="text-slate-600">Demand is not just cyclical. AI requires HBM, which is growing at 25.86% CAGR and commands 2-3x higher prices than standard DRAM. This fundamentally improves Micron's revenue quality and buffers it from commodity market swings.</p>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-md border border-slate-200 transition-transform transform hover:-translate-y-1">
+                    <div class="text-3xl mb-3">🎯</div>
+                    <h3 class="font-bold text-xl mb-2 text-slate-800">Strong Competitive Execution</h3>
+                    <p class="text-slate-600">Micron's HBM3E capacity is sold out for 2025 and qualified for use with major AI hardware from NVIDIA and AMD. This demonstrates strong customer traction and product quality, positioning Micron to capture significant market share.</p>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-md border border-slate-200 transition-transform transform hover:-translate-y-1">
+                    <div class="text-3xl mb-3">🛡️</div>
+                    <h3 class="font-bold text-xl mb-2 text-slate-800">Strategic Investments & Resilience</h3>
+                    <p class="text-slate-600">With a $200B U.S. investment plan backed by CHIPS Act grants, Micron is enhancing supply chain security and mitigating geopolitical risk. Vertical integration gives it greater control over costs and technology transitions.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="valuation" class="pt-20 scroll-mt-20">
+            <h2 class="text-3xl font-bold text-slate-800 text-center mb-4">Valuation Analysis</h2>
+            <p class="text-slate-500 text-center max-w-3xl mx-auto mb-6">This section provides a comparative look at Micron's valuation against its key peers and the broader sector. While some metrics appear high, forward estimates suggest significant earnings growth. Use the buttons to switch between P/E and EV/EBITDA comparisons to understand the full picture.</p>
+            <button id="summarizeValuationBtn" class="summarize-btn block mx-auto mb-10 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors">✨ Summarize Valuation</button>
+            <div id="valuationSummary" class="llm-summary-output bg-blue-50 p-4 rounded-md border border-blue-200 hidden mb-6"></div>
+
+            <div class="bg-white p-6 rounded-xl shadow-md border border-slate-200">
+                <div class="flex justify-center mb-4 space-x-2">
+                    <button id="peBtn" class="px-4 py-2 text-sm font-medium rounded-md bg-blue-600 text-white">P/E Ratio (TTM)</button>
+                    <button id="evEbitdaBtn" class="px-4 py-2 text-sm font-medium rounded-md bg-white text-slate-700 border border-slate-300 hover:bg-slate-100">EV/EBITDA (LTM)</button>
+                </div>
+                <div class="chart-container">
+                    <canvas id="valuationChart"></canvas>
+                </div>
+                <div class="grid md:grid-cols-2 gap-8 mt-8">
+                    <div>
+                        <h4 class="font-bold text-lg text-slate-800">Valuation Context</h4>
+                        <p class="text-slate-600 mt-2">Micron's higher multiples relative to peers Samsung and SK Hynix may reflect a market premium for its perceived leadership and rapid growth in the high-margin HBM segment. The forward P/E ratio is projected to drop to 10.44 for FY2026, suggesting the current price may be attractive given the strong anticipated earnings growth.</p>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-lg text-slate-800">Insider Activity</h4>
+                        <p class="text-slate-600 mt-2">Recent insider activity shows consistent net selling, but this is largely executed under pre-planned Rule 10b5-1 trading plans. This may indicate executives diversifying personal portfolios rather than a lack of confidence. The absence of significant open market buys is a subtle cautionary note.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="risks-catalysts" class="pt-20 scroll-mt-20">
+            <h2 class="text-3xl font-bold text-slate-800 text-center mb-4">Risks & Catalysts</h2>
+            <p class="text-slate-500 text-center max-w-3xl mx-auto mb-6">Every investment carries risks and potential catalysts. This section balances the bullish thesis by outlining key challenges Micron faces, alongside the upcoming events and technological milestones that could drive future growth. Explore the risks on the left and track the catalysts on the right.</p>
+            <button id="summarizeRisksCatalystsBtn" class="summarize-btn block mx-auto mb-10 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors">✨ Summarize Risks & Catalysts</button>
+            <div id="risksCatalystsSummary" class="llm-summary-output bg-blue-50 p-4 rounded-md border border-blue-200 hidden mb-6"></div>
+
+            <div class="grid md:grid-cols-2 gap-8">
+                <div class="bg-white p-6 rounded-xl shadow-md border border-slate-200">
+                    <h3 class="font-bold text-xl text-slate-800 mb-4">Key Risks</h3>
+                    <div id="risks-accordion" class="space-y-3">
+                        <div>
+                            <button class="accordion-toggle w-full flex justify-between items-center text-left font-semibold p-3 bg-slate-100 rounded-lg hover:bg-slate-200">
+                                Persistent Cyclicality
+                                <span class="accordion-icon transform rotate-0 transition-transform">+</span>
+                            </button>
+                            <div class="accordion-content hidden p-3">
+                                <p class="text-slate-600">While HBM provides a buffer, the majority of Micron's revenue is still tied to volatile DRAM and NAND commodity markets. An oversupply or demand slowdown in PCs/smartphones could still negatively impact overall profitability.</p>
+                            </div>
+                        </div>
+                        <div>
+                            <button class="accordion-toggle w-full flex justify-between items-center text-left font-semibold p-3 bg-slate-100 rounded-lg hover:bg-slate-200">
+                                Geopolitical Headwinds
+                                <span class="accordion-icon transform rotate-0 transition-transform">+</span>
+                            </button>
+                            <div class="accordion-content hidden p-3">
+                                <p class="text-slate-600">U.S.-China trade tensions and China's ban on Micron products pose ongoing risks. The rise of Chinese competitors like YMTC could erode market share and pricing power in key regions over the long term.</p>
+                            </div>
+                        </div>
+                        <div>
+                            <button class="accordion-toggle w-full flex justify-between items-center text-left font-semibold p-3 bg-slate-100 rounded-lg hover:bg-slate-200">
+                                Capital Intensity & Interest Rates
+                                <span class="accordion-icon transform rotate-0 transition-transform">+</span>
+                            </button>
+                            <div class="accordion-content hidden p-3">
+                                <p class="text-slate-600">The semiconductor industry requires massive capital expenditure. Higher interest rates increase borrowing costs and could strain financial flexibility, potentially slowing innovation or expansion.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-md border border-slate-200">
+                    <h3 class="font-bold text-xl text-slate-800 mb-4">Upcoming Catalysts</h3>
+                    <div class="relative pl-6">
+                        <div class="absolute left-0 h-full w-0.5 bg-slate-200"></div>
+                        <div class="relative mb-6">
+                            <div class="absolute -left-[34px] top-1 h-4 w-4 rounded-full bg-blue-600 ring-4 ring-white"></div>
+                            <p class="font-semibold text-slate-700">FQ4 2025 Earnings</p>
+                            <p class="text-sm text-slate-500">Late Sept / Early Oct 2025</p>
+                            <p class="text-slate-600 mt-1">Validation of record revenue/margin guidance and HBM ramp.</p>
+                        </div>
+                         <div class="relative mb-6">
+                            <div class="absolute -left-[34px] top-1 h-4 w-4 rounded-full bg-slate-400 ring-4 ring-white"></div>
+                            <p class="font-semibold text-slate-700">1-gamma Chip Sampling</p>
+                            <p class="text-sm text-slate-500">Ongoing</p>
+                            <p class="text-slate-600 mt-1">Positions Micron for leadership in next-gen mobile & data center DRAM.</p>
+                        </div>
+                        <div class="relative mb-6">
+                            <div class="absolute -left-[34px] top-1 h-4 w-4 rounded-full bg-slate-400 ring-4 ring-white"></div>
+                            <p class="font-semibold text-slate-700">HBM4 Volume Production</p>
+                            <p class="text-sm text-slate-500">By 2026</p>
+                            <p class="text-slate-600 mt-1">Key long-term technology differentiator for future AI hardware.</p>
+                        </div>
+                        <div class="relative">
+                            <div class="absolute -left-[34px] top-1 h-4 w-4 rounded-full bg-slate-400 ring-4 ring-white"></div>
+                            <p class="font-semibold text-slate-700">U.S. Fab Production</p>
+                            <p class="text-sm text-slate-500">By 2027</p>
+                            <p class="text-slate-600 mt-1">Enhances supply chain resilience and geopolitical advantage.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="context" class="pt-20 scroll-mt-20">
+            <h2 class="text-3xl font-bold text-slate-800 text-center mb-4">Sector & Macro Context</h2>
+            <p class="text-slate-500 text-center max-w-3xl mx-auto mb-6">This final section provides the broader landscape in which Micron operates. Understanding the overall semiconductor sector's growth, the influence of macroeconomic trends, and Micron's specific competitive positioning is crucial for a comprehensive investment analysis.</p>
+            <button id="summarizeContextBtn" class="summarize-btn block mx-auto mb-10 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors">✨ Summarize Context</button>
+            <div id="contextSummary" class="llm-summary-output bg-blue-50 p-4 rounded-md border border-blue-200 hidden mb-6"></div>
+
+            <div class="bg-white p-8 rounded-xl shadow-md border border-slate-200 space-y-8">
+                <div>
+                    <h3 class="font-bold text-xl text-slate-800">Semiconductor Sector Overview</h3>
+                    <p class="text-slate-600 mt-2">The global semiconductor industry is in a secular growth phase, projected to exceed $1 trillion in revenue by 2030. The primary driver is the buildout of AI infrastructure, fueling massive demand for GPUs, ASICs, and the memory that supports them. While the overall memory market's CAGR is a steady 6.92%, the HBM segment's 25.86% CAGR highlights a critical divergence. Companies like Micron with strong HBM positioning are set to capture disproportionate value.</p>
+                </div>
+                <div class="w-full h-px bg-slate-200"></div>
+                <div>
+                    <h3 class="font-bold text-xl text-slate-800">Macroeconomic Trends</h3>
+                    <p class="text-slate-600 mt-2">Rising interest rates and geopolitical tensions (U.S.-China) are key headwinds, increasing capital costs and disrupting supply chains. However, these risks are a double-edged sword. The U.S. CHIPS Act, a response to geopolitical risk, provides Micron with $6.44 billion in grants, turning a threat into a strategic advantage by supporting the onshoring of manufacturing. The powerful, structural demand for AI chips is also proving resilient against traditional economic pressures.</p>
+                </div>
+                 <div class="w-full h-px bg-slate-200"></div>
+                <div>
+                    <h3 class="font-bold text-xl text-slate-800">Competitive Positioning</h3>
+                    <p class="text-slate-600 mt-2">Micron is one of three dominant players in the DRAM oligopoly. While currently #3 in overall DRAM share, it's aggressively ramping HBM production with the goal of reaching ~23% market share by late 2025, challenging leader SK Hynix. In NAND, Micron focuses on high-value data center SSDs, becoming the #2 brand in Q1 2025. Its vertical integration and technological roadmap (1-gamma node, HBM4) are key competitive advantages that build long-term barriers to entry.</p>
+                </div>
+                <div class="w-full h-px bg-slate-200 mt-8"></div>
+                <div class="mt-8">
+                    <h3 class="font-bold text-xl text-slate-800 mb-4">✨ Market Impact Analysis</h3>
+                    <p class="text-slate-600 mb-4">Enter a hypothetical market event (e.g., "AI chip demand slows down") and click 'Analyze Impact' to see a brief LLM-generated analysis of its potential effect on Micron.</p>
+                    <textarea id="marketEventInput" class="w-full p-3 border border-slate-300 rounded-md focus:ring-blue-500 focus:border-blue-500 mb-4" rows="3" placeholder="Describe a market event..."></textarea>
+                    <button id="analyzeImpactBtn" class="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors">✨ Analyze Impact</button>
+                    <div id="marketImpactOutput" class="llm-summary-output bg-green-50 p-4 rounded-md border border-green-200 hidden mt-4"></div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="bg-slate-800 text-white mt-16">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-4 text-center text-sm">
+            <p>&copy; 2025 Interactive Analysis. All data derived from public sources and the provided research report.</p>
+            <p class="text-slate-400 mt-1">This is not financial advice. For informational purposes only.</p>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+
+            const financialData = {
+                labels: ['FY2021', 'FY2022', 'FY2023', 'FY2024', 'FQ3 2025', 'FQ4 2025 (G)'],
+                revenue: [27.71, 30.76, 15.54, 25.11, 9.3, 10.7],
+                grossMargin: [37.6, 45.2, -9.1, 22.4, 39.0, 42.0],
+                netIncome: [5.86, 8.69, -5.83, 0.78, 2.2, null]
+            };
+
+            const hbmMarketData = {
+                labels: ['2025 Market Size ($3.17B)', 'Growth to 2030 ($6.85B)'],
+                data: [3.17, 6.85]
+            };
+
+            const valuationData = {
+                labels: ['Micron (MU)', 'Samsung', 'SK Hynix', 'Semiconductor Sector'],
+                pe: [22.05, 8.44, 6.42, 16.20],
+                ev_ebitda: [9.9, 3.9, 4.4, 6.05] 
+            };
+            
+            const financialsCtx = document.getElementById('financialsChart').getContext('2d');
+            const financialsChart = new Chart(financialsCtx, {
+                type: 'bar',
+                data: {
+                    labels: financialData.labels,
+                    datasets: [
+                        {
+                            label: 'Revenue ($B)',
+                            data: financialData.revenue,
+                            backgroundColor: 'rgba(37, 99, 235, 0.6)',
+                            borderColor: 'rgba(37, 99, 235, 1)',
+                            borderWidth: 1,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Net Income ($B)',
+                            data: financialData.netIncome,
+                            backgroundColor: 'rgba(75, 85, 99, 0.6)',
+                            borderColor: 'rgba(75, 85, 99, 1)',
+                            borderWidth: 1,
+                            yAxisID: 'y',
+                            hidden: true
+                        },
+                        {
+                            label: 'Gross Margin (%)',
+                            data: financialData.grossMargin,
+                            borderColor: 'rgb(22, 163, 74)',
+                            backgroundColor: 'rgba(22, 163, 74, 0.1)',
+                            type: 'line',
+                            yAxisID: 'y1',
+                            tension: 0.3,
+                            fill: true,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    scales: {
+                        x: {
+                            stacked: true,
+                            grid: { display: false }
+                        },
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: { display: true, text: 'Billion USD' },
+                            grid: {
+                                color: 'rgba(200, 200, 200, 0.2)'
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: { display: true, text: 'Gross Margin %' },
+                            grid: { display: false }
+                        }
+                    },
+                    plugins: {
+                        title: { display: true, text: 'Micron Financial Turnaround (FY21-FY25)', font: { size: 16 } },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        label += context.dataset.type === 'line' ? context.parsed.y + '%' : '$' + context.parsed.y + 'B';
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            const hbmCtx = document.getElementById('hbmMarketChart').getContext('2d');
+            const hbmMarketChart = new Chart(hbmCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: hbmMarketData.labels,
+                    datasets: [{
+                        data: hbmMarketData.data,
+                        backgroundColor: ['#3B82F6', '#BFDBFE'],
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom' },
+                        title: {
+                            display: true,
+                            text: 'HBM Market Growth Forecast (25.86% CAGR)',
+                            font: { size: 14 }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => `${context.label}: ${context.parsed} USD Billion`
+                            }
+                        }
+                    }
+                }
+            });
+            
+            const valuationCtx = document.getElementById('valuationChart').getContext('2d');
+            const valuationChart = new Chart(valuationCtx, {
+                type: 'bar',
+                data: {
+                    labels: valuationData.labels,
+                    datasets: [{
+                        label: 'P/E Ratio (TTM)',
+                        data: valuationData.pe,
+                        backgroundColor: ['#2563EB', '#60A5FA', '#93C5FD', '#D1D5DB']
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                         title: { display: true, text: 'Valuation Multiples vs. Peers & Sector', font: { size: 16 } }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            title: { display: true, text: 'Multiple' }
+                        },
+                        y: {
+                           grid: { display: false } 
+                        }
+                    }
+                }
+            });
+
+            const peBtn = document.getElementById('peBtn');
+            const evEbitdaBtn = document.getElementById('evEbitdaBtn');
+
+            peBtn.addEventListener('click', () => {
+                valuationChart.data.datasets[0].data = valuationData.pe;
+                valuationChart.data.datasets[0].label = 'P/E Ratio (TTM)';
+                valuationChart.update();
+                peBtn.classList.add('bg-blue-600', 'text-white');
+                peBtn.classList.remove('bg-white', 'text-slate-700', 'border', 'border-slate-300');
+                evEbitdaBtn.classList.add('bg-white', 'text-slate-700', 'border', 'border-slate-300');
+                evEbitdaBtn.classList.remove('bg-blue-600', 'text-white');
+            });
+            
+            evEbitdaBtn.addEventListener('click', () => {
+                valuationChart.data.datasets[0].data = valuationData.ev_ebitda;
+                valuationChart.data.datasets[0].label = 'EV/EBITDA (LTM)';
+                valuationChart.update();
+                evEbitdaBtn.classList.add('bg-blue-600', 'text-white');
+                evEbitdaBtn.classList.remove('bg-white', 'text-slate-700', 'border', 'border-slate-300');
+                peBtn.classList.add('bg-white', 'text-slate-700', 'border', 'border-slate-300');
+                peBtn.classList.remove('bg-blue-600', 'text-white');
+            });
+
+            document.querySelectorAll('.accordion-toggle').forEach(button => {
+                button.addEventListener('click', () => {
+                    const content = button.nextElementSibling;
+                    const icon = button.querySelector('.accordion-icon');
+                    content.classList.toggle('hidden');
+                    icon.classList.toggle('rotate-45');
+                });
+            });
+
+            const sections = document.querySelectorAll('section[id], div[id]');
+            const navLinks = document.querySelectorAll('.nav-link');
+            
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        navLinks.forEach(link => {
+                            link.classList.remove('active');
+                            if (link.getAttribute('href').substring(1) === entry.target.id) {
+                                link.classList.add('active');
+                            }
+                        });
+                        entry.target.querySelectorAll('.card-enter').forEach(card => {
+                            card.classList.add('card-enter-active');
+                        });
+                    }
+                });
+            }, { rootMargin: "-50% 0px -50% 0px" });
+
+            sections.forEach(section => {
+                observer.observe(section);
+            });
+            
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    document.querySelector(this.getAttribute('href')).scrollIntoView({
+                        behavior: 'smooth'
+                    });
+                });
+            });
+
+            // LLM Integration
+            const apiKey = ""; 
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+            async function callGeminiAPI(prompt, outputElement, buttonElement) {
+                outputElement.classList.add('hidden');
+                outputElement.innerHTML = '';
+                
+                const originalButtonText = buttonElement.innerHTML;
+                buttonElement.disabled = true;
+                buttonElement.innerHTML = `${originalButtonText.replace('✨ ', '')} <span class="llm-loading-spinner"></span>`;
+
+                try {
+                    let chatHistory = [];
+                    chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+                    const payload = { contents: chatHistory };
+
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    const result = await response.json();
+
+                    if (result.candidates && result.candidates.length > 0 &&
+                        result.candidates[0].content && result.candidates[0].content.parts &&
+                        result.candidates[0].content.parts.length > 0) {
+                        const text = result.candidates[0].content.parts[0].text;
+                        outputElement.innerHTML = `<p>${text}</p>`;
+                        outputElement.classList.remove('hidden');
+                    } else {
+                        outputElement.innerHTML = '<p class="text-red-600">Error: Could not generate summary. Please try again.</p>';
+                        outputElement.classList.remove('hidden');
+                    }
+                } catch (error) {
+                    outputElement.innerHTML = `<p class="text-red-600">Error: ${error.message}. Please check your network or try again.</p>`;
+                    outputElement.classList.remove('hidden');
+                } finally {
+                    buttonElement.disabled = false;
+                    buttonElement.innerHTML = originalButtonText;
+                }
+            }
+
+            // Summarize Section Feature
+            document.querySelectorAll('.summarize-btn').forEach(button => {
+                button.addEventListener('click', async (event) => {
+                    const sectionId = event.target.id.replace('summarize', '').replace('Btn', '');
+                    const sectionElement = document.getElementById(sectionId.toLowerCase());
+                    const outputElement = document.getElementById(`${sectionId.toLowerCase()}Summary`);
+                    
+                    let contentToSummarize = '';
+                    if (sectionId === 'Thesis') {
+                        contentToSummarize = `Investment Thesis: ${sectionElement.querySelector('p').textContent}. ${Array.from(sectionElement.querySelectorAll('.grid > div p')).map(p => p.textContent).join(' ')}`;
+                    } else if (sectionId === 'Valuation') {
+                        contentToSummarize = `Valuation Analysis: ${sectionElement.querySelector('p').textContent}. ${Array.from(sectionElement.querySelectorAll('.grid > div p')).map(p => p.textContent).join(' ')}. Current P/E: ${valuationData.pe[0]}, EV/EBITDA: ${valuationData.ev_ebitda[0]}.`;
+                    } else if (sectionId === 'RisksCatalysts') {
+                        contentToSummarize = `Risks: ${Array.from(sectionElement.querySelectorAll('#risks-accordion p')).map(p => p.textContent).join(' ')}. Catalysts: ${Array.from(sectionElement.querySelectorAll('.relative.pl-6 p:not(.text-sm)')).map(p => p.textContent).join(' ')}.`;
+                    } else if (sectionId === 'Context') {
+                        contentToSummarize = `Sector & Macro Context: ${Array.from(sectionElement.querySelectorAll('.bg-white.p-8 p')).map(p => p.textContent).join(' ')}`;
+                    }
+
+                    const prompt = `Summarize the following text about Micron Technology's investment analysis in 2-3 concise sentences: "${contentToSummarize}"`;
+                    await callGeminiAPI(prompt, outputElement, event.target);
+                });
+            });
+
+            // Market Impact Analysis Feature
+            const marketEventInput = document.getElementById('marketEventInput');
+            const analyzeImpactBtn = document.getElementById('analyzeImpactBtn');
+            const marketImpactOutput = document.getElementById('marketImpactOutput');
+
+            analyzeImpactBtn.addEventListener('click', async () => {
+                const eventDescription = marketEventInput.value.trim();
+                if (!eventDescription) {
+                    marketImpactOutput.innerHTML = '<p class="text-red-600">Please enter a market event to analyze.</p>';
+                    marketImpactOutput.classList.remove('hidden');
+                    return;
+                }
+
+                const prompt = `Given the context of Micron Technology's investment analysis (focusing on HBM growth, valuation, risks like cyclicality and geopolitical tensions, and competitive positioning), briefly analyze the potential impact of the following market event on Micron: "${eventDescription}". Keep the analysis to 3-4 sentences.`;
+                await callGeminiAPI(prompt, marketImpactOutput, analyzeImpactBtn);
+            });
+        });
+    </script>
+</body>
+</html>
